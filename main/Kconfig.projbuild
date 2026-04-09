@@ -8,6 +8,13 @@ menu "PowerRune Project Configuration"
         help
             PowerRune driver board type (0:ARMOUR, 1:RLOGO, 2:MOTORCTL)
 
+    config PR_DEBUG_LED_ONLY
+        bool "LED-only debug mode"
+        default n
+        help
+            Boot into a hardware debug mode that only lights LEDs.
+            BLE, ESP-NOW, OTA and protocol event flow are skipped.
+
     config DEFAULT_UPDATE_URL
         string "PowerRune Update Server Address"
         default "https://gitlab.seu.edu.cn/ch/pr-ota-bin/-/raw/main/"

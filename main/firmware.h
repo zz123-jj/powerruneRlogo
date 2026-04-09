@@ -19,7 +19,6 @@
 // Common
 #include "esp_event.h"
 #include "esp_log.h"
-#include "esp_log_buffer.h"
 #include "esp_err.h"
 #include "esp_check.h"
 

@@ -649,9 +649,9 @@ esp_err_t ESPNowProtocol::send_ACK(uint16_t packet_tx_id, uint8_t *dest_mac, Pac
     return ESP_OK;
 }
 
-void ESPNowProtocol::tx_callback(const wifi_tx_info_t *tx_info, esp_now_send_status_t status)
+void ESPNowProtocol::tx_callback(const uint8_t *mac_addr, esp_now_send_status_t status)
 {
-    (void)tx_info;
+    (void)mac_addr;
     if (status == ESP_NOW_SEND_SUCCESS)
     {
         xEventGroupSetBitsFromISR(send_state, SEND_COMPLETE_BIT, &xHigherPriorityTaskWoken);
@@ -1094,14 +1094,14 @@ esp_err_t ESPNowProtocol::establish_peer_list(uint8_t *response_mac)
             }
             // 检查是否完成设置
             // 正式上线版本
-            if (memcmp(mac_addr[0], NULL_mac, ESP_NOW_ETH_ALEN) != 0 &&
-                memcmp(mac_addr[1], NULL_mac, ESP_NOW_ETH_ALEN) != 0 &&
-                memcmp(mac_addr[2], NULL_mac, ESP_NOW_ETH_ALEN) != 0 &&
-                memcmp(mac_addr[3], NULL_mac, ESP_NOW_ETH_ALEN) != 0 &&
-                memcmp(mac_addr[4], NULL_mac, ESP_NOW_ETH_ALEN) != 0 &&
-                memcmp(mac_addr[5], NULL_mac, ESP_NOW_ETH_ALEN) != 0)
+            // if (memcmp(mac_addr[0], NULL_mac, ESP_NOW_ETH_ALEN) != 0 &&
+            //     memcmp(mac_addr[1], NULL_mac, ESP_NOW_ETH_ALEN) != 0 &&
+            //     memcmp(mac_addr[2], NULL_mac, ESP_NOW_ETH_ALEN) != 0 &&
+            //     memcmp(mac_addr[3], NULL_mac, ESP_NOW_ETH_ALEN) != 0 &&
+            //     memcmp(mac_addr[4], NULL_mac, ESP_NOW_ETH_ALEN) != 0 &&
+            //     memcmp(mac_addr[5], NULL_mac, ESP_NOW_ETH_ALEN) != 0)
             // DEBUG版本
-            // if (memcmp(mac_addr[5], NULL_mac, ESP_NOW_ETH_ALEN) != 0)
+            if (memcmp(mac_addr[5], NULL_mac, ESP_NOW_ETH_ALEN) != 0)
             {
                 break;
             }

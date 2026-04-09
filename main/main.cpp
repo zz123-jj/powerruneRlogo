@@ -559,6 +559,7 @@ void led_animation_task(void *pvParameter)
     while (1)
     {
         config_rlogo = config->get_config_info_pt();
+        
         for (int i = 0; i < sequence_len; i++)
         {
             for (int j = 0; j < line_len; j++)
@@ -1073,10 +1074,30 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
 }
 
 extern "C" void app_main(void)
+
 {
+    ESP_LOGE("Main", "boot mark");
     // LED and LED Strip init
     led = new LED(GPIO_NUM_2);
     led_strip = new LED_Strip(GPIO_NUM_8, 49);
+
+#if CONFIG_PR_DEBUG_LED_ONLY
+ESP_LOGE("Main", "boot mark");
+    ESP_LOGW(TAG_MAIN, "PR_DEBUG_LED_ONLY enabled: running LED-only hardware check");
+    led->set_mode(LED_MODE_ON, 1);
+
+    const uint16_t kDebugStripLen = 49;
+    uint16_t idx = 0;
+    while (1)
+    {
+        led_strip->clear_pixels();
+        led_strip->set_color_index(idx, 64, 0, 0);
+        led_strip->refresh();
+
+        idx = (idx + 1) % kDebugStripLen;
+        vTaskDelay(pdMS_TO_TICKS(200));
+    }
+#else
 
     // 启动事件循环
     esp_event_loop_args_t loop_args = {
@@ -1106,7 +1127,8 @@ extern "C" void app_main(void)
     ESP_ERROR_CHECK(esp_event_handler_register_with(pr_events_loop_handle, PRM, PRM_STOP_EVENT, ESPNowProtocol::tx_event_handler, NULL));
 
     ESP_ERROR_CHECK(esp_event_handler_register_with(pr_events_loop_handle, PRC, OTA_BEGIN_EVENT, Firmware::global_pr_event_handler, NULL));
-
+    //fuck
+    ESP_LOGI(TAG_MAIN, "====== 准备设置特征值 ======");
     // BLE 特征值设置
     memcpy(url_val, config->get_config_common_info_pt()->URL, 100);
     memcpy(ssid_val, config->get_config_common_info_pt()->SSID, 20);
@@ -1124,57 +1146,71 @@ extern "C" void app_main(void)
     memcpy(pid_val + 5 * sizeof(float), &(config->get_config_motor_info_pt()->out_max), sizeof(float));
 
     // BLE Start
+    //fuck
+    ESP_LOGI(TAG_MAIN, "====== 准备释放传统蓝牙内存 ======");
     esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT);
     // 获取ble默认配置
+    //fuck
+    ESP_LOGI(TAG_MAIN, "====== 准备初始化蓝牙控制器 ======");
     esp_bt_controller_config_t bt_cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
 
     esp_bt_controller_init(&bt_cfg);
+    //fuck
+    ESP_LOGI(TAG_MAIN, "====== 准备开启BLE模式 ======");
     esp_bt_controller_enable(ESP_BT_MODE_BLE);
-    esp_bluedroid_config_t ble_cfg = {
-        .ssp_en = false,
-        .sc_en = false,
-    };
+    //fuck
+    ESP_LOGI(TAG_MAIN, "====== 准备开启 Bluedroid ======");
+    esp_bluedroid_config_t ble_cfg = BT_BLUEDROID_INIT_CONFIG_DEFAULT();
+    ble_cfg.ssp_en = false;
     esp_bluedroid_init_with_cfg(&ble_cfg);
     esp_bluedroid_enable();
 
     // GATT的回调注册
+    //fuck
+    ESP_LOGI(TAG_MAIN, "====== 准备注册 GATT 和 GAP ======");
     esp_ble_gatts_register_callback(gatts_event_handler);
     // GAP事件的函数
     esp_ble_gap_register_callback(gap_event_handler);
     // 注册APP
     esp_ble_gatts_app_register(ESP_SPP_APP_ID);
-
+    //fuck
+    ESP_LOGI(TAG_MAIN, "====== 准备设置 MTU ======");
     esp_err_t local_mtu_ret = esp_ble_gatt_set_local_mtu(500);
     if (local_mtu_ret)
         ESP_LOGE(TAG_MAIN, "set local  MTU failed, error code = %x", local_mtu_ret);
 
     ESP_LOGI(TAG_MAIN, "BLE Started.");
 
-    // 发送STOP到各设备以复位
+    // 1. 发送STOP到电机 (不等待ACK)
     PRM_STOP_EVENT_DATA stop_event_data;
     esp_event_post_to(pr_events_loop_handle, PRM, PRM_STOP_EVENT, &stop_event_data, sizeof(PRM_STOP_EVENT_DATA), portMAX_DELAY);
-    xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
+    // xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY); // 注释掉死等
 
-    // 发送STOP到各装甲板设备
+    /* ============ 把寻找靶面的代码直接注释掉 ============
     PRA_STOP_EVENT_DATA pra_stop_event_data;
-    for (uint8_t i = 0; i < 5; i++) // TODO: 改成5
+    for (uint8_t i = 0; i < 5; i++) 
     {
         pra_stop_event_data.address = i;
         esp_event_post_to(pr_events_loop_handle, PRA, PRA_STOP_EVENT, &pra_stop_event_data, sizeof(PRA_STOP_EVENT_DATA), portMAX_DELAY);
         xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
     }
-    // 电机停止
+    ==================================================== */
+
+    // 2. 电机再次停止 (不等待ACK)
     PRM_STOP_EVENT_DATA prm_stop_event_data;
     esp_event_post_to(pr_events_loop_handle, PRM, PRM_STOP_EVENT, &prm_stop_event_data, sizeof(PRM_STOP_EVENT_DATA), portMAX_DELAY);
-    xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
+    // xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY); // 注释掉死等
 
-    // 启动LED动画，表示大符初始化完成
+    // 3. 启动LED动画，表示大符初始化完成！！！（走到这里就一定会亮了）
     xTaskCreate(led_animation_task, "led_animation_task", 2048, NULL, 5, &led_animation_task_handle);
 
-    // 解锁电机
+    // 4. 解锁电机 (不等待ACK)
     PRM_UNLOCK_EVENT_DATA unlock_event_data;
     esp_event_post_to(pr_events_loop_handle, PRM, PRM_UNLOCK_EVENT, &unlock_event_data, sizeof(PRM_UNLOCK_EVENT_DATA), portMAX_DELAY);
-    xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
+    // xEventGroupWaitBits(ESPNowProtocol::send_state, ESPNowProtocol::SEND_ACK_OK_BIT, pdTRUE, pdTRUE, portMAX_DELAY); // 注释掉死等
 
     vTaskSuspend(NULL);
+
+#endif
+
 }

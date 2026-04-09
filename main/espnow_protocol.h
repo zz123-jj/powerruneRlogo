@@ -23,7 +23,6 @@
 #include "esp_event.h"
 #include "esp_wifi.h"
 #include "esp_log.h"
-#include "esp_log_buffer.h"
 #include "esp_mac.h"
 #include "esp_now.h"
 #include "esp_err.h"
@@ -239,7 +238,7 @@ public:
 
     static esp_err_t send_ACK(uint16_t packet_tx_id, uint8_t *dest_mac, PacketType type);
 
-    static void tx_callback(const wifi_tx_info_t *tx_info, esp_now_send_status_t status);
+    static void tx_callback(const uint8_t *mac_addr, esp_now_send_status_t status);
 
     static void tx_event_handler(void *handler_args, esp_event_base_t event_base, int32_t event_id, void *event_data);
 
